@@ -22,7 +22,7 @@ from data.utils.process import (
     process_femnist,
     process_ucihar,
     process_capture24,
-    # process_shakespeare,
+    process_shakespeare,
 )
 from data.utils.schemes import (
     dirichlet,
@@ -67,32 +67,16 @@ def main(args):
     if args.dataset == "capture24":
         dataset = process_capture24(args, partition, stats)
         partition["val"] = []
-    # elif args.dataset == "shakespeare":
-    #     dataset = process_shakespeare(args, partition, stats)
-    #     partition["val"] = []
-    elif args.dataset == "celeba":
-        dataset = process_celeba(args, partition, stats)
+    elif args.dataset == "shakespeare":
+        dataset = process_shakespeare(args, partition, stats)
         partition["val"] = []
-    elif args.dataset == "synthetic":
-        dataset = generate_synthetic_data(args, partition, stats)
-    else:  # MEDMNIST, COVID, MNIST, CIFAR10, ...
+    else: 
         # NOTE: If `args.ood_domains`` is not empty, then FL-bench will map all labels (class space) to the domain space
         # and partition data according to the new `targets` array.
         dataset = DATASETS[args.dataset](dataset_root, args)
         targets = np.array(dataset.targets, dtype=np.int32)
         target_indices = np.arange(len(targets), dtype=np.int32)
         valid_label_set = set(range(len(dataset.classes)))
-        if args.dataset in ["domain"] and args.ood_domains:
-            metadata = json.load(open(dataset_root / "metadata.json", "r"))
-            valid_label_set, targets, client_num = exclude_domain(
-                client_num=client_num,
-                domain_map=metadata["domain_map"],
-                targets=targets,
-                domain_indices_bound=metadata["domain_indices_bound"],
-                ood_domains=set(args.ood_domains),
-                partition=partition,
-                stats=stats,
-            )
 
         iid_data_partition = deepcopy(partition)
         iid_stats = deepcopy(stats)
@@ -177,12 +161,7 @@ def main(args):
                     partition=partition,
                     stats=stats,
                 )
-            elif args.dataset in ["domain"] and args.ood_domains is None:
-                with open(dataset_root / "original_partition.pkl", "rb") as f:
-                    partition = {}
-                    partition["data_indices"] = pickle.load(f)
-                    partition["separation"] = None
-                    args.client_num = len(partition["data_indices"])
+
             else:
                 raise RuntimeError(
                     "Part of data indices are ignored. Please set arbitrary one arg from"
@@ -233,7 +212,7 @@ def main(args):
             "total": args.client_num,
         }
 
-    if args.dataset not in ["capture24", "solarenergy", "shakespeare", "femnist", "celeba", "ucihar"]:
+    if args.dataset not in ["capture24", "shakespeare", "femnist", "ucihar"]:
         if args.split == "sample":
             for client_id in partition["separation"]["train"]:
                 indices = partition["data_indices"][client_id]
@@ -274,33 +253,6 @@ def main(args):
                     "val": np.array([], dtype=np.int64),
                     "test": indices,
                 }
-
-    if args.dataset in ["domain"]:
-        class_targets = np.array(dataset.targets, dtype=np.int32)
-        metadata = json.load(open(dataset_root / "metadata.json", "r"))
-
-        def _idx_2_domain_label(index):
-            for domain, bound in metadata["domain_indices_bound"].items():
-                if bound["begin"] <= index < bound["end"]:
-                    return metadata["domain_map"][domain]
-
-        domain_targets = np.vectorize(_idx_2_domain_label)(
-            np.arange(len(class_targets), dtype=np.int64)
-        )
-        for client_id in range(args.client_num):
-            indices = np.concatenate(
-                [
-                    partition["data_indices"][client_id]["train"],
-                    partition["data_indices"][client_id]["val"],
-                    partition["data_indices"][client_id]["test"],
-                ]
-            ).astype(np.int64)
-            stats[client_id] = {
-                "x": len(indices),
-                "class space": Counter(class_targets[indices].tolist()),
-                "domain space": Counter(domain_targets[indices].tolist()),
-            }
-        stats["domain_map"] = metadata["domain_map"]
 
     # plot
     if args.plot_distribution:
@@ -369,8 +321,6 @@ def main(args):
                 label_counts=counts,
                 save_path=f"{dataset_root}/class_distribution.png",
             )
-        elif args.dataset == "solarenergy":
-            pass
         else:
             counts = np.zeros((len(dataset.classes), args.client_num), dtype=np.int64)
             client_ids = range(args.client_num)
