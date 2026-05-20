@@ -131,21 +131,9 @@ class DecoupledModel(nn.Module):
 # CNN used in FedAvg
 class FedAvgCNN(DecoupledModel):
     feature_length = {
-        "mnist": 1024,
-        "medmnistS": 1024,
-        "medmnistC": 1024,
-        "medmnistA": 1024,
-        "covid19": 196736,
-        "fmnist": 1024,
-        "emnist": 1024,
         "femnist": 1024,
         "cifar10": 1600,
-        "cinic10": 1600,
         "cifar100": 1600,
-        "tiny_imagenet": 3200,
-        "celeba": 133824,
-        "svhn": 1600,
-        "usps": 800,
     }
 
     def __init__(self, dataset: str, pretrained):
@@ -168,21 +156,9 @@ class FedAvgCNN(DecoupledModel):
 
 class LeNet5(DecoupledModel):
     feature_length = {
-        "mnist": 256,
-        "medmnistS": 256,
-        "medmnistC": 256,
-        "medmnistA": 256,
-        "covid19": 49184,
-        "fmnist": 256,
-        "emnist": 256,
         "femnist": 256,
         "cifar10": 400,
-        "cinic10": 400,
-        "svhn": 400,
         "cifar100": 400,
-        "celeba": 33456,
-        "usps": 200,
-        "tiny_imagenet": 2704,
     }
 
     def __init__(self, dataset: str, pretrained):
@@ -207,132 +183,6 @@ class LeNet5(DecoupledModel):
 
         self.classifier = nn.Linear(84, NUM_CLASSES[dataset])
 
-
-class TwoNN(DecoupledModel):
-    feature_length = {
-        "mnist": 784,
-        "medmnistS": 784,
-        "medmnistC": 784,
-        "medmnistA": 784,
-        "fmnist": 784,
-        "emnist": 784,
-        "femnist": 784,
-        "cifar10": 3072,
-        "cinic10": 3072,
-        "svhn": 3072,
-        "cifar100": 3072,
-        "usps": 1536,
-        "synthetic": DATA_SHAPE["synthetic"],
-    }
-
-    def __init__(self, dataset: str, pretrained):
-        super(TwoNN, self).__init__()
-        self.base = nn.Sequential(
-            nn.Linear(self.feature_length[dataset], 200),
-            nn.ReLU(),
-            nn.Linear(200, 200),
-            nn.ReLU(),
-        )
-        # self.base = nn.Linear(features_length[dataset], 200)
-        self.classifier = nn.Linear(200, NUM_CLASSES[dataset])
-
-    def need_all_features(self):
-        return
-
-    def forward(self, x):
-        x = torch.flatten(x, start_dim=1)
-        x = self.classifier(self.base(x))
-        return x
-
-    def get_last_features(self, data, detach=True):
-        func = (lambda x: x.clone().detach()) if detach else (lambda x: x)
-        data = torch.flatten(data, start_dim=1)
-        data = self.base(data)
-        return func(data)
-
-    def get_all_features(self, x):
-        raise RuntimeError("2NN has 0 Conv layer, so is unable to get all features.")
-
-
-class AlexNet(DecoupledModel):
-    def __init__(self, dataset, pretrained):
-        super().__init__()
-
-        # NOTE: If you don't want parameters pretrained, set `pretrained` as False
-        alexnet = models.alexnet(
-            weights=models.AlexNet_Weights.DEFAULT if pretrained else None
-        )
-        self.base = alexnet
-        self.classifier = nn.Linear(
-            alexnet.classifier[-1].in_features, NUM_CLASSES[dataset]
-        )
-        self.base.classifier[-1] = nn.Identity()
-
-    def forward(self, x: Tensor) -> Tensor:
-        # if input is grayscale, repeat it to 3 channels
-        if x.shape[1] == 1:
-            x = x.broadcast_to(x.shape[0], 3, *x.shape[2:])
-        return super().forward(x)
-
-
-class SqueezeNet(DecoupledModel):
-    def __init__(self, version, dataset, pretrained):
-        super().__init__()
-
-        # NOTE: If you don't want parameters pretrained, set `pretrained` as False
-        archs = {
-            "0": (models.squeezenet1_0, models.SqueezeNet1_0_Weights.DEFAULT),
-            "1": (models.squeezenet1_1, models.SqueezeNet1_1_Weights.DEFAULT),
-        }
-        squeezenet: models.SqueezeNet = archs[version][0](
-            weights=archs[version][1] if pretrained else None
-        )
-        self.base = squeezenet.features
-        self.classifier = nn.Sequential(
-            nn.Dropout(),
-            nn.Conv2d(
-                squeezenet.classifier[1].in_channels,
-                NUM_CLASSES[dataset],
-                kernel_size=1,
-            ),
-            nn.ReLU(True),
-            nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Flatten(),
-        )
-
-    def forward(self, x: Tensor) -> Tensor:
-        # if input is grayscale, repeat it to 3 channels
-        if x.shape[1] == 1:
-            x = x.broadcast_to(x.shape[0], 3, *x.shape[2:])
-        return super().forward(x)
-
-
-class DenseNet(DecoupledModel):
-    def __init__(self, version, dataset, pretrained):
-        super().__init__()
-        archs = {
-            "121": (models.densenet121, models.DenseNet121_Weights.DEFAULT),
-            "161": (models.densenet161, models.DenseNet161_Weights.DEFAULT),
-            "169": (models.densenet169, models.DenseNet169_Weights.DEFAULT),
-            "201": (models.densenet201, models.DenseNet201_Weights.DEFAULT),
-        }
-        # NOTE: If you don't want parameters pretrained, set `pretrained` as False
-        densenet: models.DenseNet = archs[version][0](
-            weights=archs[version][1] if pretrained else None
-        )
-        self.base = densenet
-        self.classifier = nn.Linear(
-            densenet.classifier.in_features, NUM_CLASSES[dataset]
-        )
-        self.base.classifier = nn.Identity()
-
-    def forward(self, x: Tensor) -> Tensor:
-        # if input is grayscale, repeat it to 3 channels
-        if x.shape[1] == 1:
-            x = x.broadcast_to(x.shape[0], 3, *x.shape[2:])
-        return super().forward(x)
-
-
 class ResNet(DecoupledModel):
     archs = {
         "4": resnet4,
@@ -351,115 +201,6 @@ class ResNet(DecoupledModel):
         self.base = resnet
         self.classifier = nn.Linear(self.base.fc.in_features, NUM_CLASSES[dataset])
         self.base.fc = nn.Identity()
-
-    def forward(self, x: Tensor) -> Tensor:
-        # if input is grayscale, repeat it to 3 channels
-        if x.shape[1] == 1:
-            x = x.broadcast_to(x.shape[0], 3, *x.shape[2:])
-        return super().forward(x)
-
-
-class MobileNet(DecoupledModel):
-    archs = {
-        "2": (models.mobilenet_v2, models.MobileNet_V2_Weights.DEFAULT),
-        "3s": (models.mobilenet_v3_small, models.MobileNet_V3_Small_Weights.DEFAULT),
-        "3l": (models.mobilenet_v3_large, models.MobileNet_V3_Large_Weights.DEFAULT),
-    }
-
-    def __init__(self, version, dataset, pretrained):
-        super().__init__()
-        # NOTE: If you don't want parameters pretrained, set `pretrained` as False
-        mobilenet = self.archs[version][0](
-            weights=self.archs[version][1] if pretrained else None
-        )
-        self.base = mobilenet
-        self.classifier = nn.Linear(
-            mobilenet.classifier[-1].in_features, NUM_CLASSES[dataset]
-        )
-        self.base.classifier[-1] = nn.Identity()
-
-    def forward(self, x: Tensor) -> Tensor:
-        # if input is grayscale, repeat it to 3 channels
-        if x.shape[1] == 1:
-            x = x.broadcast_to(x.shape[0], 3, *x.shape[2:])
-        return super().forward(x)
-
-
-class EfficientNet(DecoupledModel):
-    archs = {
-        "0": (models.efficientnet_b0, models.EfficientNet_B0_Weights.DEFAULT),
-        "1": (models.efficientnet_b1, models.EfficientNet_B1_Weights.DEFAULT),
-        "2": (models.efficientnet_b2, models.EfficientNet_B2_Weights.DEFAULT),
-        "3": (models.efficientnet_b3, models.EfficientNet_B3_Weights.DEFAULT),
-        "4": (models.efficientnet_b4, models.EfficientNet_B4_Weights.DEFAULT),
-        "5": (models.efficientnet_b5, models.EfficientNet_B5_Weights.DEFAULT),
-        "6": (models.efficientnet_b6, models.EfficientNet_B6_Weights.DEFAULT),
-        "7": (models.efficientnet_b7, models.EfficientNet_B7_Weights.DEFAULT),
-    }
-
-    def __init__(self, version, dataset, pretrained):
-        super().__init__()
-        # NOTE: If you don't want parameters pretrained, set `pretrained` as False
-        efficientnet: models.EfficientNet = self.archs[version][0](
-            weights=self.archs[version][1] if pretrained else None
-        )
-        self.base = efficientnet
-        self.classifier = nn.Linear(
-            efficientnet.classifier[-1].in_features, NUM_CLASSES[dataset]
-        )
-        self.base.classifier[-1] = nn.Identity()
-
-    def forward(self, x: Tensor) -> Tensor:
-        # if input is grayscale, repeat it to 3 channels
-        if x.shape[1] == 1:
-            x = x.broadcast_to(x.shape[0], 3, *x.shape[2:])
-        return super().forward(x)
-
-
-class ShuffleNet(DecoupledModel):
-    archs = {
-        "0_5": (models.shufflenet_v2_x0_5, models.ShuffleNet_V2_X0_5_Weights.DEFAULT),
-        "1_0": (models.shufflenet_v2_x1_0, models.ShuffleNet_V2_X1_0_Weights.DEFAULT),
-        "1_5": (models.shufflenet_v2_x1_5, models.ShuffleNet_V2_X1_5_Weights.DEFAULT),
-        "2_0": (models.shufflenet_v2_x2_0, models.ShuffleNet_V2_X2_0_Weights.DEFAULT),
-    }
-
-    def __init__(self, version, dataset, pretrained):
-        super().__init__()
-        # NOTE: If you don't want parameters pretrained, set `pretrained` as False
-        shufflenet: models.ShuffleNetV2 = self.archs[version][0](
-            weights=self.archs[version][1] if pretrained else None
-        )
-        self.base = shufflenet
-        self.classifier = nn.Linear(shufflenet.fc.in_features, NUM_CLASSES[dataset])
-        self.base.fc = nn.Identity()
-
-    def forward(self, x: Tensor) -> Tensor:
-        # if input is grayscale, repeat it to 3 channels
-        if x.shape[1] == 1:
-            x = x.broadcast_to(x.shape[0], 3, *x.shape[2:])
-        return super().forward(x)
-
-
-class VGG(DecoupledModel):
-    archs = {
-        "11": (models.vgg11, models.VGG11_Weights.DEFAULT),
-        "13": (models.vgg13, models.VGG13_Weights.DEFAULT),
-        "16": (models.vgg16, models.VGG16_Weights.DEFAULT),
-        "19": (models.vgg19, models.VGG19_Weights.DEFAULT),
-    }
-
-    def __init__(self, version, dataset, pretrained):
-        super().__init__()
-        # NOTE: If you don't want parameters pretrained, set `pretrained` as False
-        vgg: models.VGG = self.archs[version][0](
-            weights=self.archs[version][1] if pretrained else None
-        )
-        self.base = vgg
-        self.classifier = nn.Linear(
-            vgg.classifier[-1].in_features, NUM_CLASSES[dataset]
-        )
-        self.base.classifier[-1] = nn.Identity()
 
     def forward(self, x: Tensor) -> Tensor:
         # if input is grayscale, repeat it to 3 channels
@@ -518,39 +259,6 @@ class LSTMNetBase(nn.Module):
             
         return out
 
-class fastText(DecoupledModel):
-    def __init__(self, dataset, pretrained):
-        super().__init__()
-        self.base = fastTextBase(hidden_dim=512, padding_idx=0, vocab_size=80)
-        self.classifier = nn.Linear(512, NUM_CLASSES[dataset])
-
-class fastTextBase(nn.Module):
-    def __init__(self, hidden_dim, padding_idx=0, vocab_size=80):
-        super(fastText, self).__init__()
-        
-        # Embedding Layer
-        self.embedding = nn.Embedding(vocab_size, hidden_dim, padding_idx)
-        
-        # Hidden Layer
-        self.fc1 = nn.Linear(hidden_dim, hidden_dim)
-        
-        # Output Layer
-        # self.fc = nn.Linear(hidden_dim, num_classes)
-        
-    def forward(self, x):
-        if type(x) == type([]):
-            text, _ = x
-        else:
-            text = x
-
-        embedded_sent = self.embedding(text)
-        out = self.fc1(embedded_sent.mean(1))
-        # z = self.fc(h)
-        # out = F.log_softmax(z, dim=1)
-
-        return out
-
-   
 class HARLinear(DecoupledModel):
     def __init__(self, dataset, pretrained):
         super().__init__()
@@ -604,40 +312,10 @@ MODELS = {
     "custom": CustomModel,
     "lenet5": LeNet5,
     "avgcnn": FedAvgCNN,
-    "alex": AlexNet,
-    "2nn": TwoNN,
-    "squeeze0": partial(SqueezeNet, version="0"),
-    "squeeze1": partial(SqueezeNet, version="1"),
     "res4": partial(ResNet, version="4"),
     "res10": partial(ResNet, version="10"),
     "res18": partial(ResNet, version="18"),
     "res34": partial(ResNet, version="34"),
-    "res50": partial(ResNet, version="50"),
-    "res101": partial(ResNet, version="101"),
-    "res152": partial(ResNet, version="152"),
-    "dense121": partial(DenseNet, version="121"),
-    "dense161": partial(DenseNet, version="161"),
-    "dense169": partial(DenseNet, version="169"),
-    "dense201": partial(DenseNet, version="201"),
-    "mobile2": partial(MobileNet, version="2"),
-    "mobile3s": partial(MobileNet, version="3s"),
-    "mobile3l": partial(MobileNet, version="3l"),
-    "efficient0": partial(EfficientNet, version="0"),
-    "efficient1": partial(EfficientNet, version="1"),
-    "efficient2": partial(EfficientNet, version="2"),
-    "efficient3": partial(EfficientNet, version="3"),
-    "efficient4": partial(EfficientNet, version="4"),
-    "efficient5": partial(EfficientNet, version="5"),
-    "efficient6": partial(EfficientNet, version="6"),
-    "efficient7": partial(EfficientNet, version="7"),
-    "shuffle0_5": partial(ShuffleNet, version="0_5"),
-    "shuffle1_0": partial(ShuffleNet, version="1_0"),
-    "shuffle1_5": partial(ShuffleNet, version="1_5"),
-    "shuffle2_0": partial(ShuffleNet, version="2_0"),
-    "vgg11": partial(VGG, version="11"),
-    "vgg13": partial(VGG, version="13"),
-    "vgg16": partial(VGG, version="16"),
-    "vgg19": partial(VGG, version="19"),
     "lstmnet": LSTMNet,
     "harlinear": HARLinear,
     "res1d4": partial(ResNet1d, version="4"),
