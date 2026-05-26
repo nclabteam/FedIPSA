@@ -12,9 +12,9 @@ pip install -r requirements.txt
 ### Run
 
 #### Step 1. Generate FL Dataset
-Partition the CIFAR-10 according to Dir(0.1) for 100 clients
+Partition the CIFAR-10 according to Dir(0.1) for 50 clients
 ```shell
-python generate_data.py -d cifar10 -a 0.1 -cn 100
+python generate_data.py -d cifar10 -a 0.1 -cn 50
 ```
 
 #### Step 2. Run Experiment
@@ -35,5 +35,8 @@ Such as running FedAvg with all defaults.
 python main.py method=fedavg
 ```
 Defaults are set in both [`config/defaults.yaml`](config/defaults.yaml) and [`src/utils/constants.py`](src/utils/constants.py).
+
+This repository is based on [FL-bench](https://github.com/KarhouTam/FL-bench/tree/master).
+For more details implementation, usage instructions, please also refer to the original repository.
 
 
