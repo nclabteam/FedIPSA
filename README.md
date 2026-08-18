@@ -12,7 +12,7 @@ pip install -r requirements.txt
 ### Run
 
 #### Step 1. Generate FL Dataset
-Partition the CIFAR-10 according to Dir(0.1) for 50 clients
+E.g. Partition the CIFAR-10 according to Dir(0.1) for 50 clients
 ```shell
 python generate_data.py -d cifar10 -a 0.1 -cn 50
 ```
@@ -30,13 +30,13 @@ python main.py [--config-path, --config-name] [method=<METHOD_NAME> args...]
 - `--config-path`: Relative path to the directory of the config file. Defaults to `config`.
 - `--config-name`: Name of `.yaml` config file (w/o the `.yaml` extension). Defaults to `defaults`, which points to `config/defaults.yaml`.
 
-Such as running FedAvg with all defaults. 
+E.g. Running FedAvg with all default configurations. 
 ```sh
 python main.py method=fedavg
 ```
-Defaults are set in both [`config/defaults.yaml`](config/defaults.yaml) and [`src/utils/constants.py`](src/utils/constants.py).
+Default configurations are set in both [`config/defaults.yaml`](config/defaults.yaml) and [`src/utils/constants.py`](src/utils/constants.py). See the folder ['config'](config/) for pre-set configurations that reproduce the experiments in the paper.
 
 This repository is based on [FL-bench](https://github.com/KarhouTam/FL-bench/tree/master).
-For more details implementation, usage instructions, please also refer to the original repository.
+For more detail of the implementation and usage instructions, please refer to the original repository.
 
 
