@@ -1,0 +1,60 @@
+defaults:
+  - defaults.yaml
+  - _self_
+
+method: fedipsa
+
+dataset:
+  name: cifar10
+
+model:
+  name: avgcnn
+  use_torchvision_pretrained_weights: false
+
+lr_scheduler:
+  name: plateau # [null, step, cosine, constant, plateau]
+  step_size: 10 # step
+  gamma: 0.2 # [step, plateau]
+  T_max: 10 # cosine
+  eta_min: 0 # cosine
+  factor: 0.3334 # [constant, plateau]
+  total_iters: 5 # constant
+  mode: min # plataeu
+  patience: 5 # plateau
+  threshold: 1.0e-4 # plateau
+  threshold_mode: rel # plateau
+  cooldown: 0 # plateau
+  min_lr: 0 # plateau 
+  eps: 1.0e-8 # plateau
+  last_epoch: -1
+
+optimizer:
+  lr: 0.005
+
+mode: parallel # [serial, parallel]
+parallel:
+  num_workers: 2
+common:
+  seed: 42 #[0, 11, 42]
+  join_ratio: 0.2 # Ratio for (client each round) / (client num in total).
+  global_epoch: 500 # Number of global epochs, also called communication round.
+  local_epoch: 5 # Number if epochs of client local training.
+  batch_size: 16 # Data batch size for client local training.
+  straggler_ratio: 0.0
+  straggler_min_local_epoch: 0
+  straggler_mode: drop # [slow, drop]
+  client_side_evaluation: true
+  buffers: local
+  test:
+    client:
+      interval: 1
+      finetune_epoch: 0 # Number of epochs for clients fine-tunning their models before testing.
+
+    server:
+      interval: -1
+
+
+fedipsa:
+  growth: 0.05
+  bound: 0.4
+  interval: 2
