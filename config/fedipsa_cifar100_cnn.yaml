@@ -29,7 +29,7 @@ lr_scheduler:
   last_epoch: -1
 
 optimizer:
-  lr: 0.001
+  lr: 0.005
 
 mode: parallel # [serial, parallel]
 parallel:
