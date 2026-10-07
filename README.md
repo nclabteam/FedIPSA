@@ -1,5 +1,5 @@
 
-## [FedIPSA: Personalized Federated Learning via Importance-Based Parameter Masking and Selective Alignment]{https://ieeexplore.ieee.org/document/11661321} (IEEE Internet of Things Journals)
+## [FedIPSA: Personalized Federated Learning via Importance-Based Parameter Masking and Selective Alignment](https://ieeexplore.ieee.org/document/11661321) (IEEE Internet of Things Journals)
 
 
 ### Environment Preparation
